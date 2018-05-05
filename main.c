@@ -34,7 +34,6 @@ int main(int argc, char **argv)
 		.optionSet = {
 			.tfo = 1,
 		},
-		.initialDataLen = strlen(REQ),
 	};
 	
 	char buf[1500];
