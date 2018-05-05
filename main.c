@@ -88,18 +88,20 @@ int main(int argc, char **argv)
 		if (bytes == 0)
 		{
 			//fprintf(stderr, "connection closed\n");
-			goto done;
+			break;
 		}
 		if (bytes < 0)
 		{
 			perror("recv");
-			goto done;
+			return EXIT_FAILURE;
 		}
 		
 		if (stage == RECV_AUTHREP)
 		{
 			struct S6M_AuthReply *auth_rep;
 			ssize_t auth_size = S6M_AuthReply_Parse((uint8_t *)buf + offset, sizeof(buf) - offset, &auth_rep);
+			if (auth_size == S6M_ERR_BUFFER)
+				continue;
 			if (auth_size < 0)
 			{
 				s6m_perror("auth reply parse", auth_size);
@@ -113,6 +115,8 @@ int main(int argc, char **argv)
 		{
 			struct S6M_OpReply *op_rep;
 			ssize_t op_size = S6M_OpReply_Parse((uint8_t *)buf + offset, sizeof(buf) - offset, &op_rep);
+			if (op_size == S6M_ERR_BUFFER)
+				continue;
 			if (op_size < 0)
 			{
 				s6m_perror("op reply parse", op_size);
@@ -124,14 +128,15 @@ int main(int argc, char **argv)
 		}
 		else if (stage == RECV_DATA)
 		{
+			buf[offset + bytes] = '\0';
 			printf("%s", buf + offset);
 		}
 		
 		offset += bytes;
 	}
 	
-done:
 	printf("\n");
+	
 	close(sock);
 	
 	return EXIT_SUCCESS;
