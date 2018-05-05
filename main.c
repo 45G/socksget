@@ -106,6 +106,11 @@ int main(int argc, char **argv)
 				s6m_perror("auth reply parse", auth_size);
 				return EXIT_FAILURE;
 			}
+			if (auth_rep->code != SOCKS6_AUTH_REPLY_SUCCESS)
+			{
+				fprintf(stderr, "authentication failed\n");
+				return EXIT_FAILURE;
+			}
 			S6M_AuthReply_Free(auth_rep);
 			//fprintf(stderr, "got auth reply\n");
 			stage = RECV_OPREP;
@@ -119,6 +124,11 @@ int main(int argc, char **argv)
 			if (op_size < 0)
 			{
 				s6m_perror("op reply parse", op_size);
+				return EXIT_FAILURE;
+			}
+			if (op_rep->code != SOCKS6_OPERATION_REPLY_SUCCESS)
+			{
+				fprintf(stderr, "operation failed\n");
 				return EXIT_FAILURE;
 			}
 			S6M_OpReply_Free(op_rep);
