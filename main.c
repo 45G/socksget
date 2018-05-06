@@ -94,11 +94,12 @@ int main(int argc, char **argv)
 			perror("recv");
 			return EXIT_FAILURE;
 		}
+		offset += bytes;
 		
 		if (stage == RECV_AUTHREP)
 		{
 			struct S6M_AuthReply *auth_rep;
-			ssize_t auth_size = S6M_AuthReply_Parse((uint8_t *)buf + offset, sizeof(buf) - offset, &auth_rep);
+			ssize_t auth_size = S6M_AuthReply_Parse((uint8_t *)buf, offset, &auth_rep);
 			if (auth_size == S6M_ERR_BUFFER)
 				continue;
 			if (auth_size < 0)
@@ -114,11 +115,14 @@ int main(int argc, char **argv)
 			S6M_AuthReply_Free(auth_rep);
 			//fprintf(stderr, "got auth reply\n");
 			stage = RECV_OPREP;
+			
+			offset -= auth_size;
+			memmove(buf, buf + auth_size, offset);
 		}
-		else if (stage == RECV_OPREP)
+		if (stage == RECV_OPREP)
 		{
 			struct S6M_OpReply *op_rep;
-			ssize_t op_size = S6M_OpReply_Parse((uint8_t *)buf + offset, sizeof(buf) - offset, &op_rep);
+			ssize_t op_size = S6M_OpReply_Parse((uint8_t *)buf, offset, &op_rep);
 			if (op_size == S6M_ERR_BUFFER)
 				continue;
 			if (op_size < 0)
@@ -134,14 +138,16 @@ int main(int argc, char **argv)
 			S6M_OpReply_Free(op_rep);
 			//fprintf(stderr, "got op reply\n");
 			stage = RECV_DATA;
+			
+			offset -= op_size;
+			memmove(buf, buf + op_size, offset);
 		}
-		else if (stage == RECV_DATA)
+		if (stage == RECV_DATA)
 		{
-			buf[offset + bytes] = '\0';
-			printf("%s", buf + offset);
+			buf[offset] = '\0';
+			printf("%s", buf);
+			offset = 0;
 		}
-		
-		offset += bytes;
 	}
 	
 	printf("\n");
