@@ -5,4 +5,4 @@ CONFIG -= qt
 
 SOURCES += main.c
 
-LIBS += -L$$_PRO_FILE_PWD_/libsocks6msg/ -lsocks6msg
+LIBS += -lsocks6msg

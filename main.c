@@ -4,7 +4,7 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
-#include "libsocks6msg/socks6msg.h"
+#include <socks6msg/socks6msg.h>
 
 #define REQ "GET / HTTP/1.0\r\n\r\n"
 
@@ -16,7 +16,7 @@ void usage()
 
 void s6m_perror(const char *msg, int err)
 {
-	fprintf(stderr, "%s: %s\n", msg, S6M_Error_Msg(err));
+	fprintf(stderr, "%s: %s\n", msg, S6M_Error_msg(err));
 }
 
 int main(int argc, char **argv)
@@ -38,7 +38,7 @@ int main(int argc, char **argv)
 	
 	char buf[1500];
 	
-	ssize_t req_size = S6M_Request_Pack(&req, (uint8_t *)buf, 1500);
+	ssize_t req_size = S6M_Request_pack(&req, (uint8_t *)buf, 1500);
 	if (req_size < 0)
 	{
 		s6m_perror("request pack", req_size);
@@ -99,7 +99,7 @@ int main(int argc, char **argv)
 		if (stage == RECV_AUTHREP)
 		{
 			struct S6M_AuthReply *auth_rep;
-			ssize_t auth_size = S6M_AuthReply_Parse((uint8_t *)buf, offset, &auth_rep);
+			ssize_t auth_size = S6M_AuthReply_parse((uint8_t *)buf, offset, &auth_rep);
 			if (auth_size == S6M_ERR_BUFFER)
 				continue;
 			if (auth_size < 0)
@@ -112,7 +112,7 @@ int main(int argc, char **argv)
 				fprintf(stderr, "authentication failed\n");
 				return EXIT_FAILURE;
 			}
-			S6M_AuthReply_Free(auth_rep);
+			S6M_AuthReply_free(auth_rep);
 			//fprintf(stderr, "got auth reply\n");
 			stage = RECV_OPREP;
 			
@@ -122,7 +122,7 @@ int main(int argc, char **argv)
 		if (stage == RECV_OPREP)
 		{
 			struct S6M_OpReply *op_rep;
-			ssize_t op_size = S6M_OpReply_Parse((uint8_t *)buf, offset, &op_rep);
+			ssize_t op_size = S6M_OpReply_parse((uint8_t *)buf, offset, &op_rep);
 			if (op_size == S6M_ERR_BUFFER)
 				continue;
 			if (op_size < 0)
@@ -135,7 +135,7 @@ int main(int argc, char **argv)
 				fprintf(stderr, "operation failed\n");
 				return EXIT_FAILURE;
 			}
-			S6M_OpReply_Free(op_rep);
+			S6M_OpReply_free(op_rep);
 			//fprintf(stderr, "got op reply\n");
 			stage = RECV_DATA;
 			
