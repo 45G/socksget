@@ -5,6 +5,8 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <socks6msg/socks6msg.h>
+#include <socks6msg/socks6msg.hh>
+#include <vector>
 
 #define REQ "GET / HTTP/1.0\r\n\r\n"
 
@@ -16,56 +18,60 @@ void usage()
 
 void s6m_perror(const char *msg, int err)
 {
-	fprintf(stderr, "%s: %s\n", msg, S6M_Error_msg(err));
+	fprintf(stderr, "%s: %s\n", msg, S6M_Error_msg((S6M_Error)err));
 }
 
 int main(int argc, char **argv)
 {
-	if (argc != 4)
+	if (argc != 5)
 		usage();
+
+
+	in6_addr prx;
+	in6_addr srv;
+	in6_addr detour;
+
+	inet_pton(AF_INET6, argv[1], &prx);
+	inet_pton(AF_INET6, argv[4], &detour);
+	inet_pton(AF_INET6, argv[3], &srv);
 	
-	struct S6M_Request req = {
-		.code = SOCKS6_REQUEST_CONNECT,
-		.addr = {
-			.type = SOCKS6_ADDR_DOMAIN,
-			.domain = argv[3],
-		},
-		.port = 80,
-		.optionSet = {
-			.tfo = 1,
-		},
-	};
+	struct S6M::Request req(SOCKS6_REQUEST_CONNECT, S6M::Address(srv), 80, 0);
+	std::vector<in6_addr> detours;
+	detours.push_back(detour);
+	req.getOptionSet()->setForwardSegments(detours);
 	
-	char buf[1500];
+	uint8_t buf[1500];
+
+	ssize_t req_size = req.pack(buf, sizeof(buf));
 	
-	ssize_t req_size = S6M_Request_pack(&req, (uint8_t *)buf, 1500);
-	if (req_size < 0)
-	{
-		s6m_perror("request pack", req_size);
-		return EXIT_FAILURE;
-	}
 	memcpy(buf + req_size, REQ, strlen(REQ));
 	req_size += strlen(REQ);
 	
 	int sock;
 	
-	sock = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+	sock = socket(AF_INET6, SOCK_STREAM, IPPROTO_TCP);
 	if (sock < 0)
 	{
 		perror("socket");
 		return EXIT_FAILURE;
 	}
 	
-	struct sockaddr_in proxy = {
-		.sin_family = AF_INET,
-		.sin_port = htons(atoi(argv[2])),
-		.sin_addr = { .s_addr = inet_addr(argv[1]) },
-	};
-	
-	int err = sendto(sock, (const void *)buf, req_size, MSG_FASTOPEN, (const struct sockaddr *)&proxy, sizeof(struct sockaddr_in));
+	struct sockaddr_in6 proxy;
+	proxy.sin6_family = AF_INET6;
+	proxy.sin6_port = htons(atoi(argv[2]));
+	proxy.sin6_addr = prx;
+
+	int err = connect(sock, (const struct sockaddr *)&proxy, sizeof(struct sockaddr_in6));
 	if (err < 0)
 	{
-		perror("sendto");
+		perror("connect");
+		return EXIT_FAILURE;
+	}
+	
+	err = send(sock, (const void *)buf, req_size, 0);
+	if (err < 0)
+	{
+		perror("send");
 		return EXIT_FAILURE;
 	}
 	
